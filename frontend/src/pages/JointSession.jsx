@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../App'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Users, AlertTriangle, CheckCircle, Wifi, WifiOff, Bot, User, MessageSquare, Flame } from 'lucide-react'
+import { Send, Users, AlertTriangle, CheckCircle, Wifi, WifiOff, Bot, User, MessageSquare, Flame, Volume2, VolumeX, Loader2 } from 'lucide-react'
 import EscalationTracker from '../components/EscalationTracker'
 import VoiceInput from '../components/VoiceInput'
+import { playTTS, stopTTS, onTTSStateChange } from '../utils/tts'
 
 export default function JointSession() {
   const { disputeId } = useParams()
@@ -19,8 +20,21 @@ export default function JointSession() {
   const [signal, setSignal] = useState(null)
   const [escalationScore, setEscalationScore] = useState(0)
   const [partyInfo, setPartyInfo] = useState(null)
+  const [ttsEnabled, setTtsEnabled] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const ttsEnabledRef = useRef(false)
   const wsRef = useRef(null)
   const chatEndRef = useRef(null)
+  const partyInfoRef = useRef(null) // For websocket closure
+
+  // Keep ref in sync with state for WebSocket closure access
+  useEffect(() => { ttsEnabledRef.current = ttsEnabled }, [ttsEnabled])
+
+  // Track TTS speaking state for UI feedback
+  useEffect(() => {
+    onTTSStateChange((speaking) => setIsSpeaking(speaking));
+    return () => onTTSStateChange(null);
+  }, [])
 
   useEffect(() => { 
     loadSession(); 
@@ -36,7 +50,10 @@ export default function JointSession() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }),
       })
       const data = await res.json()
-      if (data.valid) setPartyInfo(data)
+      if (data.valid) {
+        setPartyInfo(data)
+        partyInfoRef.current = data
+      }
     } catch (e) { console.error('Failed to verify token', e) }
   }
 
@@ -59,6 +76,14 @@ export default function JointSession() {
       else if (data.type === 'message') {
         setMessages(p => [...p, data])
         if (data.escalation_score !== undefined) setEscalationScore(data.escalation_score)
+        
+        if (data.role === 'mediator') {
+          // Use ref to read latest ttsEnabled state (avoids stale closure)
+          if (ttsEnabledRef.current) {
+            const lang = partyInfoRef.current?.language || 'en';
+            playTTS(data.content, lang, API_URL);
+          }
+        }
       }
       else if (data.type === 'system') setMessages(p => [...p, { role: 'system', content: data.content }])
       else if (data.type === 'signal') {
@@ -98,6 +123,25 @@ export default function JointSession() {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button 
+            onClick={() => {
+              if (ttsEnabled) stopTTS();
+              setTtsEnabled(!ttsEnabled);
+            }}
+            title={ttsEnabled ? 'Disable Voice' : 'Enable Voice'}
+            style={{ 
+              background: isSpeaking ? 'rgba(102,126,234,0.15)' : ttsEnabled ? 'rgba(72,187,120,0.1)' : 'rgba(0,0,0,0.05)',
+              border: `1px solid ${isSpeaking ? 'rgba(102,126,234,0.4)' : ttsEnabled ? 'rgba(72,187,120,0.3)' : 'transparent'}`,
+              color: isSpeaking ? '#667eea' : ttsEnabled ? '#48bb78' : '#64748b',
+              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+              borderRadius: 20, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.8rem', fontWeight: 600
+            }}
+          >
+            {isSpeaking ? (
+              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : ttsEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            {isSpeaking ? 'Speaking...' : ttsEnabled ? 'Voice ON' : 'Voice OFF'}
+          </button>
           {/* Escalation Score Indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 100,
             background: escalationScore >= 1 ? 'rgba(252,92,101,0.1)' : 'rgba(0,0,0,0.03)',

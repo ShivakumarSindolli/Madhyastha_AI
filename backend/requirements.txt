@@ -29,6 +29,12 @@ httpx==0.27.2
 # WebSocket
 websockets==12.0
 
+# TTS / STT
+gTTS==2.5.3
+edge-tts==7.2.8
+SpeechRecognition==3.10.4
+pydub==0.25.1
+
 # Utilities
 pydantic==2.9.2
 pydantic-settings==2.5.2

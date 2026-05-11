@@ -88,30 +88,50 @@ export default function Register() {
           <Check size={36} style={{ color: '#48bb78' }} />
         </motion.div>
         <h2 style={{ fontSize: '1.6rem', fontWeight: 800, fontFamily: 'Outfit', marginBottom: 8 }}>Dispute Registered!</h2>
-        <p style={{ color: '#64748b', marginBottom: 28, fontSize: '0.92rem' }}>Share the secure session links with both parties.</p>
+        <p style={{ color: '#64748b', marginBottom: 28, fontSize: '0.92rem' }}>Each party can start their private caucus session below.</p>
 
-        {[{ label: `Party A — ${form.party_a.name}`, link: result.party_a_link, key: 'a', color: '#667eea' },
-          { label: `Party B — ${form.party_b.name}`, link: result.party_b_link, key: 'b', color: '#48bb78' }].map((p) => (
+        {[{ label: `Party A — ${form.party_a.name}`, role: 'Complainant', link: result.party_a_link, token: result.party_a_token, key: 'a', color: '#667eea', gradient: 'linear-gradient(135deg, #667eea, #764ba2)' },
+          { label: `Party B — ${form.party_b.name}`, role: 'Respondent', link: result.party_b_link, token: result.party_b_token, key: 'b', color: '#48bb78', gradient: 'linear-gradient(135deg, #48bb78, #38a169)' }].map((p) => (
           <motion.div key={p.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: p.key === 'a' ? 0.3 : 0.4 }}
-            style={{ padding: 16, borderRadius: 14, background: `${p.color}08`, border: `1px solid ${p.color}20`, marginBottom: 12, textAlign: 'left' }}>
-            <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: 6, fontWeight: 600 }}>{p.label}</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input readOnly value={p.link} className="input-field" style={{ fontSize: '0.75rem', padding: '8px 12px' }} />
-              <motion.button whileTap={{ scale: 0.95 }} onClick={() => copyText(p.link, p.key)} className="btn-secondary"
-                style={{ padding: '8px 14px', flexShrink: 0, fontSize: '0.8rem' }}>
-                {copied === p.key ? <Check size={14} /> : <Copy size={14} />}
+            style={{ padding: 20, borderRadius: 16, background: `${p.color}08`, border: `1px solid ${p.color}20`, marginBottom: 14, textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.label}</div>
+                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>{p.role}</div>
+              </div>
+              <motion.button whileTap={{ scale: 0.95 }} onClick={() => copyText(p.link, p.key)}
+                title="Copy session link"
+                style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid var(--border)', borderRadius: 10,
+                         padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                         fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                {copied === p.key ? <><Check size={12} style={{ color: '#48bb78' }} /> Copied!</> : <><Copy size={12} /> Copy Link</>}
               </motion.button>
             </div>
+            <motion.a
+              href={`/caucus?token=${p.token}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.02, boxShadow: `0 8px 24px ${p.color}30` }}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                width: '100%', padding: '14px 20px', borderRadius: 12,
+                background: p.gradient, color: 'white',
+                fontWeight: 700, fontSize: '0.92rem', fontFamily: 'Outfit',
+                textDecoration: 'none', cursor: 'pointer', border: 'none',
+                boxShadow: `0 4px 15px ${p.color}25`, transition: 'all 0.3s',
+              }}
+            >
+              <ExternalLink size={16} />
+              Start Caucus Session →
+            </motion.a>
           </motion.div>
         ))}
 
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 24 }}>
-          <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.98 }} className="btn-primary"
-            onClick={() => navigate(`/caucus?token=${result.party_a_token}`)} style={{ fontSize: '0.9rem' }}>
-            Open as Party A <ExternalLink size={14} />
-          </motion.button>
-          <button className="btn-secondary" onClick={() => { setResult(null); setStep(0) }} style={{ fontSize: '0.9rem' }}>
-            Register Another
+        <div style={{ marginTop: 20 }}>
+          <button className="btn-secondary" onClick={() => { setResult(null); setStep(0) }}
+            style={{ fontSize: '0.9rem', padding: '10px 24px' }}>
+            Register Another Dispute
           </button>
         </div>
       </motion.div>

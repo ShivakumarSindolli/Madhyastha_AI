@@ -10,7 +10,7 @@
   - 🤝 **Joint Mediator**: Facilitates a live, real-time negotiation session between both parties.
   - 📜 **Agreement Drafter**: Automatically drafts a legally binding PDF settlement agreement (under Section 22).
   - ⚖️ **Arbitration Brief**: Generates an evidence brief if the mediation fails and escalates.
-- **Multilingual STT & Translation**: Native Speech-to-Text (STT) and LLM support for 10 regional Indian languages. The AI responds in native scripts (Devanagari, Kannada script, etc.) and acts as a live translator during joint sessions.
+- **Multilingual Voice I/O**: Backend-powered **Speech-to-Text** (Google Speech Recognition via `SpeechRecognition` library) and **Text-to-Speech** (gTTS) for 10 regional Indian languages (Hindi, Kannada, Tamil, Telugu, Marathi, Bengali, Gujarati, Punjabi, Malayalam, English). The AI responds in native scripts and reads aloud AI mediator responses.
 - **Real-Time Escalation Engine**: Actively monitors the joint session for hostile keywords (threats, absolute refusals). If the hostility threshold is reached, it automatically halts the mediation and escalates the case to a human Arbitrator.
 - **Async Notification Pipeline**: Anti-spam compliant SMTP integration utilizing FastAPI `BackgroundTasks` to reliably deliver private session links and signed PDF agreements.
 
@@ -22,6 +22,8 @@
 - **AI / LLM**: Groq API (`llama-3.1-8b-instant` for ultra-low latency)
 - **Legal RAG**: FAISS + JSON-based legal precedents and case law
 - **PDF Generation**: ReportLab
+- **TTS Engine**: gTTS (Google Text-to-Speech) — streams MP3 audio
+- **STT Engine**: SpeechRecognition + pydub + ffmpeg (Google Speech Recognition API)
 - **Real-time Comm**: WebSockets
 
 ### Frontend
@@ -29,13 +31,15 @@
 - **Styling**: Vanilla CSS (Glassmorphism & Modern UI)
 - **Animations**: Framer Motion
 - **Icons**: Lucide React
-- **Speech-to-Text**: Native Web Speech API
+- **Speech-to-Text**: MediaRecorder → Backend Google Speech Recognition API
+- **Text-to-Speech**: Backend gTTS → Browser Audio playback
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
+- [FFmpeg](https://ffmpeg.org/download.html) (required for audio conversion in STT)
 - A [Groq](https://console.groq.com/) API Key
 - An SMTP account (e.g., Gmail with an App Password)
 

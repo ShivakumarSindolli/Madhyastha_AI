@@ -32,6 +32,9 @@ Prevention (LightGBM) → AI Mediation → Human Mediation → Arbitration → C
 | Court Filing (petition PDF) | ✅ Evidence bundle |
 | 4-stage escalation chain | ✅ AI → Human → Arbitration → Court |
 | Admin dashboard + risk scorer UI | ✅ Prevention Engine panel |
+| Text-to-Speech (TTS) — gTTS | ✅ Backend `/tts` endpoint, toggle in Caucus + Joint Session |
+| Speech-to-Text (STT) — Google Speech Recognition | ✅ Backend `/stt` endpoint via SpeechRecognition lib + pydub |
+| Multilingual voice I/O (10 Indian languages) | ✅ en, hi, kn, ta, te, mr, bn, gu, pa, ml |
 
 Everything from the original spec is retained and enhanced.
 
@@ -120,6 +123,8 @@ Realtime:       Native WebSocket client
 Signatures:     react-signature-canvas
 State:          React Context + useState
 Charts:         recharts (stats dashboard)
+Speech-to-Text: MediaRecorder → Backend Google Speech Recognition API
+Text-to-Speech: Backend gTTS → Browser Audio playback
 ```
 
 ### AI / ML Pipeline
@@ -131,6 +136,8 @@ Translation:    Bhashini API (Indian govt — free)
 Vector Store:   FAISS (local)
 Risk Scorer:    LightGBM (binary classifier, 9 features, ROC-AUC: 1.0)
 Training Data:  5,000 synthetic civic event sequences (RERA/CPGrams/CERSAI)
+TTS Engine:     gTTS (Google Text-to-Speech) — backend streaming MP3
+STT Engine:     SpeechRecognition lib (Google Speech Recognition API) + pydub + ffmpeg
 ```
 
 ### External APIs / Data Sources
@@ -371,6 +378,15 @@ POST  /risk/score                            Compute risk score using LightGBM m
 POST  /risk/nudge/{party_id}?language=en     Send mock WhatsApp nudge (logs, not live)
 GET   /risk/history/{party_id}               Get risk score history
 GET   /risk/model-info                       Get LightGBM model metadata
+```
+
+### Voice I/O — Text-to-Speech & Speech-to-Text
+```
+POST  /tts                                   Generate TTS audio (edge TTS) — returns MP3 stream
+                                              Body: { text: str, language: str }
+POST  /stt                                   Transcribe audio (Google Speech Recognition)
+                                              Body: multipart/form-data { audio: File, language: str }
+                                              Returns: { transcript, language, success, error? }
 ```
 
 ---
@@ -623,6 +639,8 @@ nyayaai/
 │   │   │   ├── arbitration.py      ← full arbitration management
 │   │   │   ├── court.py            ← court filing mode
 │   │   │   ├── risk.py             ← prevention engine API
+│   │   │   ├── tts.py              ← gTTS text-to-speech endpoint
+│   │   │   ├── stt.py              ← Google Speech Recognition endpoint
 │   │   │   └── websocket.py
 │   │   ├── agents/
 │   │   │   ├── caucus_interviewer.py
@@ -677,7 +695,10 @@ nyayaai/
 │   │   ├── components/
 │   │   │   ├── ChatBubble.jsx
 │   │   │   ├── SignaturePad.jsx
-│   │   │   └── EscalationTracker.jsx
+│   │   │   ├── EscalationTracker.jsx
+│   │   │   └── VoiceInput.jsx      ← MediaRecorder → backend STT
+│   │   ├── utils/
+│   │   │   └── tts.js               ← playTTS / stopTTS → backend gTTS
 │   │   ├── hooks/
 │   │   │   └── useWebSocket.js
 │   │   └── App.jsx
@@ -966,6 +987,17 @@ Step 13  Bhashini Integration (app/services/bhashini.py)
          - Wrap Caucus Interviewer responses in translation when language ≠ en
          - Wrap SMS/email notifications in translated templates
          - Test: full Hindi caucus session end to end
+
+         Voice I/O — TTS & STT (✅ COMPLETED)
+         - TTS: gTTS backend endpoint (/tts) generates MP3 audio streams
+           → Frontend plays via Audio API with toggle in Caucus + Joint Session
+           → stopTTS() for instant audio stop, text truncation for long responses
+         - STT: SpeechRecognition lib (/stt) with Google Speech Recognition API
+           → Frontend records via MediaRecorder (webm/opus)
+           → Backend converts to WAV via pydub + ffmpeg → transcribes
+           → Returns JSON { transcript, success, error }
+         - VoiceInput component: recording timer, auto-stop at 30s, processing spinner
+         - Supports all 10 languages: en, hi, kn, ta, te, mr, bn, gu, pa, ml
 
 Step 14  Frontend: Admin Dashboard (pages/Admin.jsx)
          - GET /dispute/stats/summary → show:

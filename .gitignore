@@ -1,2 +1,22 @@
-﻿
+# Environment
 backend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+backend/venv/
+
+# Database
+*.db
+
+# Generated PDFs
+backend/data/pdfs/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useAppContext } from '../App'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MessageSquare, Send, Lock, AlertCircle, CheckCircle, Bot, User, Sparkles, ShieldCheck, Users } from 'lucide-react'
+import { MessageSquare, Send, Lock, AlertCircle, CheckCircle, Bot, User, Sparkles, ShieldCheck, Users, Volume2, VolumeX, Loader2 } from 'lucide-react'
 import EscalationTracker from '../components/EscalationTracker'
 import VoiceInput from '../components/VoiceInput'
+import { playTTS, stopTTS, onTTSStateChange } from '../utils/tts'
 
 export default function Caucus() {
   const { API_URL, setToken } = useAppContext()
@@ -22,7 +23,19 @@ export default function Caucus() {
   const [extractedStatement, setExtractedStatement] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const [waitingForOther, setWaitingForOther] = useState(false)
+  const [ttsEnabled, setTtsEnabled] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const ttsEnabledRef = useRef(false)
   const chatEndRef = useRef(null)
+
+  // Keep ref in sync with state for use in async callbacks
+  useEffect(() => { ttsEnabledRef.current = ttsEnabled }, [ttsEnabled])
+
+  // Track TTS speaking state for UI feedback
+  useEffect(() => {
+    onTTSStateChange((speaking) => setIsSpeaking(speaking));
+    return () => onTTSStateChange(null);
+  }, [])
 
   // Initial token verification
   useEffect(() => { if (token) verifyToken() }, [token])
@@ -82,13 +95,20 @@ export default function Caucus() {
       })
       const data = await res.json()
       setMessages(p => [...p, { role: 'ai', content: data.ai_response }])
+      if (ttsEnabledRef.current) {
+        playTTS(data.ai_response, partyInfo?.language || 'en', API_URL);
+      }
+      
       if (data.statement_complete) { setStatementComplete(true); setExtractedStatement(data.extracted_statement) }
     } catch { setMessages(p => [...p, { role: 'ai', content: 'Connection error. Please try again.' }]) }
     finally { setLoading(false) }
   }
 
   const submitStatement = async () => {
-    if (!extractedStatement) return; setLoading(true)
+    if (!extractedStatement) return;
+    stopTTS(); // Stop any playing TTS immediately
+    setTtsEnabled(false);
+    setLoading(true)
     try {
       const res = await fetch(`${API_URL}/caucus/submit-statement`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -181,8 +201,29 @@ export default function Caucus() {
             {partyInfo?.dispute_title} &bull; {partyInfo?.role === 'party_a' ? 'Complainant' : 'Respondent'}
           </p>
         </div>
-        <div className="badge badge-active">
-          <Lock size={10} /> Private
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button 
+            onClick={() => {
+              if (ttsEnabled) stopTTS();
+              setTtsEnabled(!ttsEnabled);
+            }}
+            title={ttsEnabled ? 'Disable Voice' : 'Enable Voice'}
+            style={{ 
+              background: isSpeaking ? 'rgba(102,126,234,0.15)' : ttsEnabled ? 'rgba(72,187,120,0.1)' : 'rgba(0,0,0,0.05)',
+              border: `1px solid ${isSpeaking ? 'rgba(102,126,234,0.4)' : ttsEnabled ? 'rgba(72,187,120,0.3)' : 'transparent'}`,
+              color: isSpeaking ? '#667eea' : ttsEnabled ? '#48bb78' : '#64748b',
+              display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+              borderRadius: 20, cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.8rem', fontWeight: 600
+            }}
+          >
+            {isSpeaking ? (
+              <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+            ) : ttsEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />}
+            {isSpeaking ? 'Speaking...' : ttsEnabled ? 'Voice ON' : 'Voice OFF'}
+          </button>
+          <div className="badge badge-active">
+            <Lock size={10} /> Private
+          </div>
         </div>
       </motion.div>
 
